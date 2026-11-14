@@ -2,7 +2,7 @@
 
 GTK 4 + libadwaita application in Python 3 (PyGObject), with Blueprint UI
 (`.blp` compiles to GtkBuilder XML at build time), Meson, gettext i18n and
-Flatpak packaging. App ID: `com.example.Hello`. Minimum libadwaita is 1.5
+Flatpak packaging. App ID: `com.example.Hello`. Minimum libadwaita is 1.8
 (the scaffold targets 1.10 in the GNOME 51 runtime).
 
 IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning for

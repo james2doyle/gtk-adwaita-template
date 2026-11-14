@@ -21,7 +21,7 @@ and a Meson test setup.
 ## Requirements
 
 - Python 3.12+ and PyGObject (`Gtk-4.0`, `Adw-1` GIRs)
-- GTK 4 and libadwaita 1.5+ (the Flatpak runtime provides 1.10)
+- GTK 4 and libadwaita 1.8+ (the Flatpak runtime provides 1.10)
 - `meson`, `ninja`, `blueprint-compiler`
 - `gettext` (`msgfmt`); optional validators: `desktop-file-validate`,
   `appstreamcli`, `glib-compile-schemas`
