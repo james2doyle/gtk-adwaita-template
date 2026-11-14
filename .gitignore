@@ -1,0 +1,9 @@
+/subprojects/blueprint-compiler
+/build/
+/build-install/
+/.flatpak-builder/
+/.venv/
+/.dex/
+__pycache__/
+*.pyc
+*~

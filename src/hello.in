@@ -1,0 +1,30 @@
+#!@PYTHON@
+
+# SPDX-License-Identifier: MIT
+
+import gettext
+import locale
+import os
+import signal
+import sys
+
+VERSION = '@VERSION@'
+pkgdatadir = '@pkgdatadir@'
+localedir = '@localedir@'
+
+sys.path.insert(1, pkgdatadir)
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+locale.bindtextdomain('hello', localedir)
+locale.textdomain('hello')
+gettext.bindtextdomain('hello', localedir)
+gettext.textdomain('hello')
+
+if __name__ == '__main__':
+    import gi
+
+    from gi.repository import Gio
+    resource = Gio.Resource.load(os.path.join(pkgdatadir, 'hello.gresource'))
+    resource._register()
+
+    from hello import main
+    sys.exit(main.main(VERSION))

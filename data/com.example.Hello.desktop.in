@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Hello
+Exec=hello
+Icon=com.example.Hello
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=hello;
+StartupNotify=true
+DBusActivatable=true

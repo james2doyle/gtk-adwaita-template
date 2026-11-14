@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.example.Hello</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+
+  <name>Hello</name>
+  <summary>A GTK 4 and libadwaita application</summary>
+  <description>
+    <p>Hello is a minimal GTK 4 and libadwaita application scaffold. Replace this description with your project's.</p>
+  </description>
+
+  <developer id="com.example">
+    <name>James Doyle</name>
+  </developer>
+
+  <url type="homepage">https://example.com/hello</url>
+  <url type="bugtracker">https://example.com/hello/issues</url>
+  <url type="vcs-browser">https://example.com/hello</url>
+
+  <translation type="gettext">hello</translation>
+  <launchable type="desktop-id">com.example.Hello.desktop</launchable>
+
+  <content_rating type="oars-1.1" />
+
+  <branding>
+    <color type="primary" scheme_preference="light">#3584e4</color>
+    <color type="primary" scheme_preference="dark">#1c71d8</color>
+  </branding>
+
+  <releases>
+    <release version="0.1.0" date="2026-11-14">
+      <description translate="no">
+        <p>Initial development release.</p>
+      </description>
+    </release>
+  </releases>
+</component>
