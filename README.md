@@ -15,6 +15,7 @@ and a Meson test setup.
 - gettext translation wiring and AppStream/desktop-file validators
 - GSettings schema and D-Bus activation service
 - Flatpak manifest targeting `org.gnome.Platform` 51
+- GitHub Actions build/test workflow
 - `dev.py` restart-on-save runner and a window smoke test
 
 ## Requirements
@@ -28,10 +29,22 @@ and a Meson test setup.
 - optional: `uv` to install the `pygobject-stubs` dev group for editors;
   the application itself always runs on the system Python
 
-## Create a project from this template
+<!-- template:start -->
+## Start a new project
 
-Copy the directory (or use it as a GitHub template), then run the initializer
-from the new copy:
+This repository is a template. Use GitHub's **Use this template** button, or
+clone it and start a fresh history:
+
+```sh
+git clone https://github.com/james2doyle/gtk-adwaita-template.git my-app
+cd my-app
+rm -rf .git
+git init -b main
+```
+
+Skip the history-reset steps if you used **Use this template**.
+
+Then rewrite the template identity from the new project directory:
 
 ```sh
 python3 scripts/init.py \
@@ -48,6 +61,19 @@ The script rewrites the application ID, resource path, GType prefix, human
 name, slug, author, URLs, and every derived filename (desktop file, schema,
 service, Flatpak manifest, icons, launcher, gresource).
 
+Review the result, commit the initial project, and build and test it. The
+executable name is the derived slug (`"My App"` becomes `my_app`):
+
+```sh
+git add -A
+git commit -m "Initialize My App"
+meson setup build --prefix="$PWD/build-install"
+meson compile -C build
+meson test -C build
+meson install -C build
+./build-install/bin/my_app
+```
+
 Rules:
 
 - The app ID must be a reverse-DNS D-Bus name with at least three components,
@@ -56,6 +82,7 @@ Rules:
   when `--slug` is omitted (`"My App"` becomes `my_app`).
 - The initializer skips itself, so it keeps the template defaults for a
   future copy.
+<!-- template:end -->
 
 ## Build and run
 
@@ -112,6 +139,8 @@ finish-args only when the application actually needs them.
 ## Project layout
 
 ```text
+.github/workflows/ci.yml       GitHub Actions build/test workflow
+COPYING                        MIT license
 dev.py                         restart-on-save development runner
 com.example.Hello.json         Flatpak manifest
 pyproject.toml                 dev tooling metadata (not a Python package)
@@ -143,6 +172,12 @@ tests/test_window.py           window smoke test
 4. Add translatable files to `po/POTFILES.in`; wrap user-visible strings in
    `_(...)` in Python and `.blp` files.
 5. Follow `AGENTS.md` for window/dialog and action workflows.
+
+## Contributing
+
+Pull requests are welcome. Keep the scaffold buildable, run
+`meson test -C build`, and lint changed `.blp` files with
+`blueprint-compiler lint`.
 
 ## License
 

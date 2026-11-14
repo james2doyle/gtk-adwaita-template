@@ -1,6 +1,8 @@
 project('hello',
           version: '0.1.0',
-    meson_version: '>= 1.0.0',
+          license: 'MIT',
+          license_files: 'COPYING',
+    meson_version: '>= 1.1.0',
   default_options: [ 'warning_level=2', 'werror=false', ],
 )
 

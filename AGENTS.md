@@ -174,6 +174,7 @@ The installed launcher adds its prefix to `GSETTINGS_SCHEMA_DIR` and
 ## Template initialization
 
 Run `python3 scripts/init.py` from a copy of this repository to replace the
-app ID, name, slug, author and derived filenames. The script is excluded from
-its own replacements, so the template defaults remain available for the next
-copy.
+app ID, name, slug, author and derived filenames. It also removes the
+template-only “Start a new project” section from `README.md`. The script is
+excluded from its own replacements, so the template defaults remain available
+for the next copy.

@@ -29,6 +29,8 @@ SKIP_DIRS = {
     "__pycache__",
 }
 SKIP_FILES = {Path("scripts/init.py")}
+TEMPLATE_START = "<!-- template:start -->"
+TEMPLATE_END = "<!-- template:end -->"
 
 
 def fail(message):
@@ -67,6 +69,19 @@ def validate_slug(slug):
 
 def gtype_prefix(slug):
     return "".join(part.capitalize() for part in slug.split("_") if part)
+
+
+def strip_template_readme():
+    """Remove the template-only README block from the initialized project."""
+    readme = ROOT / "README.md"
+    text = readme.read_text(encoding="utf-8")
+    start = text.find(TEMPLATE_START)
+    end = text.find(TEMPLATE_END)
+    if start == -1 or end == -1 or end < start:
+        return
+    text = text[:start] + text[end + len(TEMPLATE_END):]
+    text = re.sub(r"\n{3,}", "\n\n", text).strip() + "\n"
+    readme.write_text(text, encoding="utf-8")
 
 
 def replace_in_file(path, replacements):
@@ -174,6 +189,8 @@ def main():
         if not source.exists():
             fail(f"expected source file is missing: {old}")
         source.rename(ROOT / new)
+
+    strip_template_readme()
 
     print(f"Done: {name} is ready. Run: meson setup build --prefix=\"$PWD/build-install\"")
     return 0

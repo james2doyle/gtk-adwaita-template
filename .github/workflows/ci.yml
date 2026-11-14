@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            appstream \
+            blueprint-compiler \
+            desktop-file-utils \
+            gettext \
+            gir1.2-adw-1 \
+            gir1.2-gtk-4.0 \
+            libadwaita-1-dev \
+            libglib2.0-bin \
+            libglib2.0-dev \
+            libgtk-4-bin \
+            libgtk-4-dev \
+            meson \
+            ninja-build \
+            python3-gi \
+            xauth \
+            xvfb
+
+      - name: Build
+        run: |
+          meson setup build --prefix="$PWD/build-install"
+          meson compile -C build
+
+      - name: Test
+        run: xvfb-run --auto-servernum meson test -C build --print-errorlogs
+
+      - name: Install
+        run: meson install -C build
