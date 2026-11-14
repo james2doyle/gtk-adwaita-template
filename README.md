@@ -14,17 +14,19 @@ and a Meson test setup.
 - Meson build with a local-prefix install for uninstalled runs
 - gettext translation wiring and AppStream/desktop-file validators
 - GSettings schema and D-Bus activation service
-- Flatpak manifest targeting `org.gnome.Platform` 50
+- Flatpak manifest targeting `org.gnome.Platform` 51
 - `dev.py` restart-on-save runner and a window smoke test
 
 ## Requirements
 
 - Python 3.12+ and PyGObject (`Gtk-4.0`, `Adw-1` GIRs)
-- GTK 4 and libadwaita
+- GTK 4 and libadwaita 1.5+ (the Flatpak runtime provides 1.10)
 - `meson`, `ninja`, `blueprint-compiler`
 - `gettext` (`msgfmt`); optional validators: `desktop-file-validate`,
   `appstreamcli`, `glib-compile-schemas`
 - `flatpak` and `flatpak-builder` for packaging
+- optional: `uv` to install the `pygobject-stubs` dev group for editors;
+  the application itself always runs on the system Python
 
 ## Create a project from this template
 
@@ -36,10 +38,12 @@ python3 scripts/init.py \
   --app-id com.example.MyApp \
   --name "My App" \
   --author "Your Name" \
-  --author-email you@example.com
+  --author-email you@example.com \
+  --repo-url https://github.com/you/my-app
 ```
 
-Run `python3 scripts/init.py` without arguments to be prompted for each value.
+Run `python3 scripts/init.py` without arguments to be prompted for the
+application ID, name, author, email and repository URL.
 The script rewrites the application ID, resource path, GType prefix, human
 name, slug, author, URLs, and every derived filename (desktop file, schema,
 service, Flatpak manifest, icons, launcher, gresource).
@@ -63,7 +67,9 @@ meson install -C build
 ```
 
 The launcher hard-codes the install prefix, so uninstalled runs need the
-`build-install` prefix and the `meson install` step.
+`build-install` prefix and the `meson install` step. It also adds that prefix
+to `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS`, so schemas and icons resolve
+without extra environment setup.
 
 ## Live development
 
@@ -92,16 +98,15 @@ not touch user data.
 ## Flatpak
 
 The manifest builds the app from the working tree (`type: dir`), so
-uncommitted changes are included. A stale local `build/` directory can break
-the module build; remove it first.
+uncommitted changes are included. Its `skip` list excludes build directories,
+virtualenvs and VCS metadata.
 
 ```sh
-rm -rf build
 flatpak-builder --user --install --force-clean build-flatpak com.example.Hello.json
 flatpak run com.example.Hello
 ```
 
-The manifest targets the GNOME runtime `50`. Add `--talk-name` or other
+The manifest targets the GNOME runtime `51`. Add `--talk-name` or other
 finish-args only when the application actually needs them.
 
 ## Project layout
@@ -109,7 +114,7 @@ finish-args only when the application actually needs them.
 ```text
 dev.py                         restart-on-save development runner
 com.example.Hello.json         Flatpak manifest
-pyproject.toml                 Python metadata and uv dependency groups
+pyproject.toml                 dev tooling metadata (not a Python package)
 data/                          desktop file, metainfo, GSettings schema, icons
 po/                            translation sources
 scripts/init.py                rename the scaffold for a new application
@@ -126,10 +131,13 @@ tests/test_window.py           window smoke test
 
 ## Customizing
 
-1. Replace the placeholder summary, description, screenshots, developer,
-   homepage, and branding colors in `data/com.example.Hello.metainfo.xml.in`.
-2. Bump the version in three places: `meson.build`, the About dialog in
-   `src/main.py`, and `pyproject.toml`.
+1. Replace the placeholder summary, description, developer, homepage, and
+   branding colors in `data/com.example.Hello.metainfo.xml.in`, and add at
+   least one screenshot before submitting to Flathub.
+2. Bump the version in three metadata files: `meson.build`,
+   `pyproject.toml` and the `<release>` entry in
+   `data/com.example.Hello.metainfo.xml.in`. The About dialog reads the
+   version that Meson passes to the launcher.
 3. Add GSettings keys to `data/com.example.Hello.gschema.xml` before using
    them from Python.
 4. Add translatable files to `po/POTFILES.in`; wrap user-visible strings in

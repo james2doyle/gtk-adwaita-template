@@ -18,14 +18,15 @@ sys.path.insert(0, SOURCE_ROOT)
 import gi
 
 gi.require_version("Gtk", "4.0")
+gi.require_version("Gdk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gio
+from gi.repository import Adw, Gdk, Gio, Gtk
 
-Adw.init()
-
-if Gdk.Display.get_default() is None:
+if not Gtk.init_check() or Gdk.Display.get_default() is None:
     print("SKIP: no display available")
     sys.exit(77)
+
+Adw.init()
 
 resource = Gio.Resource.load(RESOURCE)
 resource._register()

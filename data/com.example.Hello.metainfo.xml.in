@@ -10,6 +10,14 @@
     <p>Hello is a minimal GTK 4 and libadwaita application scaffold. Replace this description with your project's.</p>
   </description>
 
+  <!-- Add screenshots before submitting to Flathub, for example:
+  <screenshots>
+    <screenshot type="default">
+      <image>https://example.com/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+  -->
+
   <developer id="com.example">
     <name>James Doyle</name>
   </developer>

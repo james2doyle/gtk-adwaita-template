@@ -1,10 +1,11 @@
 [Desktop Entry]
 Name=Hello
+Comment=A GTK 4 and libadwaita application
 Exec=hello
 Icon=com.example.Hello
 Terminal=false
 Type=Application
 Categories=Utility;
-Keywords=hello;
+Keywords=gtk;adwaita;
 StartupNotify=true
 DBusActivatable=true

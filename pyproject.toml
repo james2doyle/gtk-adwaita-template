@@ -1,3 +1,7 @@
+# PyGObject and the GTK/libadwaita runtime come from the system; Meson installs
+# the application itself. This is not a distributable Python package; the file
+# only describes the optional dev environment.
+
 [project]
 name = "hello"
 version = "0.1.0"
@@ -8,11 +12,11 @@ license = "MIT"
 authors = [
     { name = "James Doyle", email = "james2doyle@gmail.com" }
 ]
-dependencies = [
-    "pygobject>=3.56.3"
-]
 
 [dependency-groups]
 dev = [
-    "pygobject-stubs>=2.17.0",
+    "pygobject-stubs>=2.20.0",
 ]
+
+[tool.uv]
+package = false

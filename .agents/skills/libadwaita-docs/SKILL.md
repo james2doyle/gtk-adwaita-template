@@ -12,35 +12,35 @@ Use this skill when answering questions about building modern GNOME applications
 You can access Libadwaita documentation pages directly by construct URLs based on entity type and name, or via search queries:
 
 - **Direct Entity URLs (`<type>.<Name>.html`):**
-  - **Enums:** `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/enum.<Name>.html`  
-    *Example:* [Adw.ToolbarStyle](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/enum.ToolbarStyle.html)
-  - **Classes:** `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/class.<Name>.html`  
-    *Example:* `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/class.ToolbarView.html`
-  - **Structs / Interfaces:** `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/struct.<Name>.html` or `iface.<Name>.html`
+  - **Enums:** `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/enum.<Name>.html`
+    *Example:* [Adw.ToolbarStyle](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/enum.ToolbarStyle.html)
+  - **Classes:** `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.<Name>.html`
+    *Example:* `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/class.ToolbarView.html`
+  - **Structs / Interfaces:** `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/struct.<Name>.html` or `iface.<Name>.html`
 
 - **Search Query Format:**
-  - **URL Structure:** `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/index.html?q=<term>`  
-    *Example:* `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/index.html?q=ToolbarStyle`
+  - **URL Structure:** `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/index.html?q=<term>`
+    *Example:* `https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/index.html?q=ToolbarStyle`
 
-You can find the docs and details for the stylesheet at https://github.com/GNOME/libadwaita/tree/1.9.4/src/stylesheet
+You can find the docs and details for the stylesheet at https://github.com/GNOME/libadwaita/tree/1.10.0/src/stylesheet
 
 ## Key Reference Sections
 
 - **Initialization & Setup:**
-  - [Compiling with Libadwaita](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/compiling-libadwaita.html)
-  - [Initialization](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/initialization.html)
+  - [Compiling with Libadwaita](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/compiling-libadwaita.html)
+  - [Initialization](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/initialization.html)
 - **UI & Layout Patterns:**
-  - [Adaptive Layouts](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/adaptive-layouts.html)
-  - [Boxed Lists](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/boxed-lists.html)
-  - [Widget Gallery](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/widget-gallery.html)
+  - [Adaptive Layouts](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/adaptive-layouts.html)
+  - [Boxed Lists](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/boxed-lists.html)
+  - [Widget Gallery](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/widget-gallery.html)
 - **Styling & Appearance:**
-  - [Styles & Appearance](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/style-classes.html)
-  - [CSS Variables](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/css-variables.html)
-  - [Style Classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/style-classes.html)
+  - [Styles & Appearance](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/style-classes.html)
+  - [CSS Variables](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/css-variables.html)
+  - [Style Classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/style-classes.html)
 - **Migration Guides:**
-  - [Migrating to Breakpoints](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/migrating-to-breakpoints.html)
-  - [Migrating to Adaptive Dialogs](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/migrating-to-adaptive-dialogs.html)
-  - [Migrating from Libhandy 1.4](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/migrating-libhandy-1-4-to-libadwaita.html)
+  - [Migrating to Breakpoints](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/migrating-to-breakpoints.html)
+  - [Migrating to Adaptive Dialogs](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/migrating-to-adaptive-dialogs.html)
+  - [Migrating from Libhandy 1.4](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/migrating-libhandy-1-4-to-libadwaita.html)
 
 ## Common Query Workflows
 
@@ -57,11 +57,11 @@ You can find the docs and details for the stylesheet at https://github.com/GNOME
 
 ### 2. Adaptive Layout Implementation
 - Check `AdwBreakpoint` for window size triggers.
-- Refer to [Migrating to Breakpoints](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/migrating-to-breakpoints.html) when updating legacy `AdwLeaflet` or `AdwFlap` implementations.
+- Refer to [Migrating to Breakpoints](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/migrating-to-breakpoints.html) when updating legacy `AdwLeaflet` or `AdwFlap` implementations.
 
 ### 3. Styling & Customization
 - Prefer built-in Adwaita CSS variables (`--window-bg-color`, `--accent-bg-color`, etc.) over hardcoded colors.
-- Use established style classes (`.suggested-action`, `.destructive-action`, `.title-1`) defined in the [Style Classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/style-classes.html) reference.
+- Use established style classes (`.suggested-action`, `.destructive-action`, `.title-1`) defined in the [Style Classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/style-classes.html) reference.
 
 ## Response Guidelines
 - **Language Scope:** Provide C, Python, or Vala code snippets depending on user preference, defaulting to C/GObject or GTK Blueprint/UI XML files when illustrating layout structures.

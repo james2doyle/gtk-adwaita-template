@@ -2,7 +2,8 @@
 
 GTK 4 + libadwaita application in Python 3 (PyGObject), with Blueprint UI
 (`.blp` compiles to GtkBuilder XML at build time), Meson, gettext i18n and
-Flatpak packaging. App ID: `com.example.Hello`.
+Flatpak packaging. App ID: `com.example.Hello`. Minimum libadwaita is 1.5
+(the scaffold targets 1.10 in the GNOME 51 runtime).
 
 IMPORTANT: Prefer retrieval-led reasoning over pre-training-led reasoning for
 GTK4/libadwaita/Blueprint tasks.
@@ -11,8 +12,8 @@ GTK4/libadwaita/Blueprint tasks.
 
 - GTK: https://docs.gtk.org/gtk4/
 - GTK search: https://docs.gtk.org/gtk4/?q=%s
-- libadwaita: https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1.9/index.html?q=%s
-- libadwaita stylesheet: https://github.com/GNOME/libadwaita/tree/1.9.4/src/stylesheet
+- libadwaita: https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/index.html?q=%s
+- libadwaita stylesheet: https://github.com/GNOME/libadwaita/tree/1.10.0/src/stylesheet
 
 ## Build & verify
 
@@ -39,8 +40,8 @@ python3 dev.py
 
 ## Hard boundaries
 
-- Don't edit `src/*.ui` — generated from `.blp` by `blueprint-compiler
-  batch-compile` (see `src/meson.build`).
+- Don't edit generated `.ui` files — `blueprint-compiler batch-compile`
+  writes them to `build/src/*.ui` (see `src/meson.build`).
 - Don't leave user-visible strings unwrapped. Wrap them in `_(...)` in
   `.py`/`.blp` and add the file to `po/POTFILES.in`.
 - Don't import gi repositories unguarded. Call `gi.require_version` first
@@ -131,11 +132,14 @@ settings = Gio.Settings(schema_id='com.example.Hello')
 settings.bind('key-name', widget, 'active', Gio.SettingsBindFlags.DEFAULT)
 ```
 
+The installed launcher adds its prefix to `GSETTINGS_SCHEMA_DIR` and
+`XDG_DATA_DIRS`, so schemas and icons also resolve from `build-install`.
+
 ## File index
 
 ```text
 [Refs]|Blueprint syntax, bindings, menus, breakpoints: .agents/skills/gtk-guidelines/SKILL.md
-[UI]|sources: src/*.blp | generated, do not edit: src/*.ui
+[UI]|sources: src/*.blp | generated, do not edit: build/src/*.ui
      |entry: src/main.py (app + actions), src/window.py (window class)
      |resources: src/hello.gresource.xml | build: src/meson.build
 [Data]|settings: data/com.example.Hello.gschema.xml | i18n: po/POTFILES.in

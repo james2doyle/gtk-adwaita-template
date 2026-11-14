@@ -60,7 +60,9 @@ test_env = [
   'XDG_RUNTIME_DIR=' + (meson.current_build_dir() / 'test-runtime'),
   'XDG_CACHE_HOME=' + (meson.current_build_dir() / 'test-cache'),
   'XDG_DATA_HOME=' + (meson.current_build_dir() / 'test-data'),
+  'GSETTINGS_SCHEMA_DIR=' + (meson.project_build_root() / 'data'),
 ]
 
 test('Window smoke test', python3, args: [files('../tests/test_window.py')],
+  depends: test_schemas,
   env: test_env)

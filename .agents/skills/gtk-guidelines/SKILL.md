@@ -6,7 +6,7 @@ description: Write and edit GNOME Blueprint UI files (.blp) for GTK 4 and libadw
 # GNOME Blueprint
 
 Blueprint is a declarative markup language that compiles to GtkBuilder XML
-(`blueprint-compiler`). Everything here is grounded in GTK 4 / libadwaita 1.6+.
+(`blueprint-compiler`). Everything here is grounded in GTK 4 / libadwaita 1.10+.
 A canonical set of runnable examples lives in the Workbench demos repo
 (`src/<Demo Name>/main.blp`; directory names contain spaces). Mimic those
 patterns.

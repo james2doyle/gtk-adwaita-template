@@ -1,5 +1,7 @@
 # List of source files containing translatable strings.
 # Please keep this file sorted alphabetically.
+# xgettext does not recognize .blp and falls back to C; Blueprint's _() and C_()
+# syntax is compatible with that parser, so the fallback is intentional.
 data/com.example.Hello.desktop.in
 data/com.example.Hello.metainfo.xml.in
 data/com.example.Hello.gschema.xml

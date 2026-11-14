@@ -28,6 +28,11 @@ install_data('com.example.Hello.gschema.xml',
   install_dir: get_option('datadir') / 'glib-2.0' / 'schemas'
 )
 
+# Compiled schemas for tests that must not depend on the install prefix.
+test_schemas = gnome.compile_schemas(
+  depend_files: ['com.example.Hello.gschema.xml'],
+)
+
 compile_schemas = find_program('glib-compile-schemas', required: false, disabler: true)
 test('Validate schema file',
      compile_schemas,

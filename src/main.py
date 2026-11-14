@@ -20,12 +20,13 @@ log = logging.getLogger(__name__)
 class HelloApplication(Adw.Application):
     """The main application singleton class."""
 
-    def __init__(self):
+    def __init__(self, version):
         super().__init__(
             application_id="com.example.Hello",
             flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
             resource_base_path="/com/example/Hello",
         )
+        self.version = version
         self.create_action("quit", lambda *_: self.quit(), ["<control>q"])
         self.create_action("about", self.on_about_action)
 
@@ -45,7 +46,7 @@ class HelloApplication(Adw.Application):
             application_name="Hello",
             application_icon="com.example.Hello",
             developer_name="James Doyle",
-            version="0.1.0",
+            version=self.version,
             # Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
             translator_credits=_("translator-credits"),
             developers=["James Doyle"],
@@ -75,5 +76,5 @@ def main(version):
     level = logging.DEBUG if configured_level else logging.INFO
     logging.basicConfig(level=level, format="%(name)s: %(message)s")
     log.info("Hello %s", version)
-    app = HelloApplication()
+    app = HelloApplication(version)
     return app.run(sys.argv)

@@ -110,7 +110,7 @@ def main():
 
     author = args.author or ask("Author name", DEFAULT_AUTHOR)
     email = args.author_email or ask("Author email", DEFAULT_EMAIL)
-    repo_url = (args.repo_url or DEFAULT_URL).rstrip("/")
+    repo_url = (args.repo_url or ask("Repository URL", DEFAULT_URL)).rstrip("/")
 
     gtype = gtype_prefix(slug)
     app_id_path = "/" + app_id.replace(".", "/")
