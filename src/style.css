@@ -1,0 +1,6 @@
+/* Application CSS.
+ *
+ * Adw.Application loads style.css, style-dark.css and style-hc.css from the
+ * GResource base path automatically. Keep selectors scoped to app-specific
+ * classes and use Adwaita named colors such as @borders and @accent_bg_color.
+ */

@@ -26,6 +26,7 @@
             "name" : "hello",
             "builddir" : true,
             "buildsystem" : "meson",
+            "license-files" : ["COPYING"],
             "sources" : [
                 {
                     "type" : "dir",

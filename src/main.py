@@ -12,8 +12,6 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, Gio
 
-from .window import HelloWindow
-
 log = logging.getLogger(__name__)
 
 
@@ -27,7 +25,7 @@ class HelloApplication(Adw.Application):
             resource_base_path="/com/example/Hello",
         )
         self.version = version
-        self.create_action("quit", lambda *_: self.quit(), ["<control>q"])
+        self.create_action("quit", self.on_quit_action, ["<control>q"])
         self.create_action("about", self.on_about_action)
 
     def do_activate(self):
@@ -37,8 +35,21 @@ class HelloApplication(Adw.Application):
         """
         win = self.props.active_window
         if not win:
+            # Import the window lazily so a second instance that only forwards
+            # activation over D-Bus skips the GTK window module.
+            from .window import HelloWindow
+
             win = HelloWindow(application=self)
         win.present()
+
+    def on_quit_action(self, *_args):
+        """Close every window through its normal close-request path."""
+        windows = self.get_windows()
+        if not windows:
+            self.quit()
+            return
+        for win in windows:
+            win.close()
 
     def on_about_action(self, *args):
         """Callback for the app.about action."""
@@ -72,7 +83,7 @@ class HelloApplication(Adw.Application):
 
 def main(version):
     """The application's entry point."""
-    configured_level = os.environ.get("G_MESSAGES_DEBUG", "")
+    configured_level = os.environ.get("HELLO_DEBUG", "")
     level = logging.DEBUG if configured_level else logging.INFO
     logging.basicConfig(level=level, format="%(name)s: %(message)s")
     log.info("Hello %s", version)

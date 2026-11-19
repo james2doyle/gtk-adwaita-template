@@ -9,7 +9,9 @@ GType prefix, and every filename derived from the application ID.
 import argparse
 import re
 import sys
+import unicodedata
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_APP_ID = "com.example.Hello"
@@ -22,15 +24,32 @@ DEFAULT_URL = "https://example.com/hello"
 SKIP_DIRS = {
     ".git",
     ".dex",
+    ".delta",
+    ".ruff_cache",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".direnv",
+    ".idea",
+    ".vscode",
     "build",
     "build-install",
+    "build-flatpak",
+    "build-appimage",
+    "AppDir",
+    "appimage-build",
+    "squashfs-root",
     ".flatpak-builder",
     ".venv",
+    "dist",
     "__pycache__",
 }
-SKIP_FILES = {Path("scripts/init.py")}
+SKIP_FILES = {
+    Path("scripts/init.py"),
+    Path("tests/test_init.py"),
+}
 TEMPLATE_START = "<!-- template:start -->"
 TEMPLATE_END = "<!-- template:end -->"
+TEMPLATE_FILES = (Path("README.md"), Path("AGENTS.md"))
 
 
 def fail(message):
@@ -63,25 +82,84 @@ def validate_app_id(app_id):
 
 
 def validate_slug(slug):
-    if not re.fullmatch(r"[a-z_][a-z0-9_]*", slug):
-        fail("slug must be a lowercase Python identifier (letters, digits, underscore)")
+    if not re.fullmatch(r"[a-z_][a-z0-9_]*", slug) or not any(
+        char.isalnum() for char in slug
+    ):
+        fail(
+            "slug must be a lowercase Python identifier containing at least "
+            "one letter or digit"
+        )
+
+
+def validate_text(label, value):
+    """Reject characters that need context-specific escaping in source/XML."""
+    if not value:
+        fail(f"{label} must not be empty")
+    for char in value:
+        category = unicodedata.category(char)
+        if char in "\"'\\<>&" or category in {"Cc", "Cf", "Cs", "Zl", "Zp"}:
+            fail(
+                f"{label} must not contain quotes, backslashes, angle "
+                "brackets, ampersands, or control/format characters"
+            )
+
+
+def validate_email(email):
+    validate_text("author email", email)
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        fail("author email must look like name@example.com")
+
+
+def validate_url(url):
+    validate_text("repository URL", url)
+    if any(char in url for char in "()[]{} \t"):
+        fail("repository URL contains characters unsafe for Markdown links")
+    try:
+        parsed = urlparse(url)
+    except ValueError:
+        fail("repository URL is not valid")
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        fail("repository URL must be an absolute http:// or https:// URL")
+    if parsed.username or parsed.password:
+        fail("repository URL must not contain embedded credentials")
 
 
 def gtype_prefix(slug):
     return "".join(part.capitalize() for part in slug.split("_") if part)
 
 
-def strip_template_readme():
-    """Remove the template-only README block from the initialized project."""
-    readme = ROOT / "README.md"
-    text = readme.read_text(encoding="utf-8")
-    start = text.find(TEMPLATE_START)
-    end = text.find(TEMPLATE_END)
-    if start == -1 or end == -1 or end < start:
-        return
-    text = text[:start] + text[end + len(TEMPLATE_END):]
-    text = re.sub(r"\n{3,}", "\n\n", text).strip() + "\n"
-    readme.write_text(text, encoding="utf-8")
+def strip_template_sections():
+    """Remove template-only README and AGENTS sections from the new project."""
+    for relative in TEMPLATE_FILES:
+        path = ROOT / relative
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        start = text.find(TEMPLATE_START)
+        end = text.find(TEMPLATE_END)
+        if start == -1 or end == -1 or end < start:
+            continue
+        text = text[:start] + text[end + len(TEMPLATE_END):]
+        text = re.sub(r"\n{3,}", "\n\n", text).strip() + "\n"
+        path.write_text(text, encoding="utf-8")
+
+
+def apply_replacements(text, replacements):
+    """Apply replacements simultaneously so new values are not rewritten."""
+    tokens = []
+    updated = text
+    for index, (old, new) in enumerate(replacements):
+        token = f"\x00{index}\x00"
+        if token in text:
+            fail("input already contains an internal replacement marker")
+        tokens.append((token, new))
+        if isinstance(old, re.Pattern):
+            updated = old.sub(token, updated)
+        else:
+            updated = updated.replace(old, token)
+    for token, new in tokens:
+        updated = updated.replace(token, new)
+    return updated
 
 
 def replace_in_file(path, replacements):
@@ -89,14 +167,53 @@ def replace_in_file(path, replacements):
         text = path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         return
-    updated = text
-    for old, new in replacements:
-        if isinstance(old, re.Pattern):
-            updated = old.sub(new, updated)
-        else:
-            updated = updated.replace(old, new)
+    updated = apply_replacements(text, replacements)
     if updated != text:
         path.write_text(updated, encoding="utf-8")
+
+
+def build_renames(root, app_id, slug):
+    """Return validated source/target paths for every identity-derived file."""
+    renames = {
+        Path("src/hello.in"): Path(f"src/{slug}.in"),
+        Path("src/hello.gresource.xml"): Path(f"src/{slug}.gresource.xml"),
+        Path("data/com.example.Hello.desktop.in"): Path(
+            f"data/{app_id}.desktop.in"
+        ),
+        Path("data/com.example.Hello.metainfo.xml.in"): Path(
+            f"data/{app_id}.metainfo.xml.in"
+        ),
+        Path("data/com.example.Hello.gschema.xml"): Path(
+            f"data/{app_id}.gschema.xml"
+        ),
+        Path("data/com.example.Hello.service.in"): Path(
+            f"data/{app_id}.service.in"
+        ),
+        Path("data/icons/hicolor/scalable/apps/com.example.Hello.svg"): Path(
+            f"data/icons/hicolor/scalable/apps/{app_id}.svg"
+        ),
+        Path(
+            "data/icons/hicolor/symbolic/apps/com.example.Hello-symbolic.svg"
+        ): Path(f"data/icons/hicolor/symbolic/apps/{app_id}-symbolic.svg"),
+        Path("com.example.Hello.json"): Path(f"{app_id}.json"),
+    }
+
+    target_names = set()
+    source_names = set(renames)
+    for old, new in renames.items():
+        source = root / old
+        target = root / new
+        if not source.exists():
+            fail(f"expected source file is missing: {old}")
+        normalized = str(new).casefold()
+        if normalized in target_names:
+            fail(f"multiple template files map to the same target: {new}")
+        target_names.add(normalized)
+        if old != new and target.exists():
+            fail(f"refusing to overwrite existing target: {new}")
+        if new in source_names and new != old:
+            fail(f"rename target is also a template source file: {new}")
+    return renames
 
 
 def main():
@@ -116,16 +233,22 @@ def main():
     if DEFAULT_APP_ID not in main_py.read_text(encoding="utf-8"):
         fail("this tree is already initialized (could not find the template app ID)")
 
-    app_id = args.app_id or ask("Application ID", DEFAULT_APP_ID)
+    app_id = (args.app_id or ask("Application ID", DEFAULT_APP_ID)).strip()
     validate_app_id(app_id)
 
-    name = args.name or ask("Application name", DEFAULT_NAME)
-    slug = args.slug or slugify(name)
+    name = (args.name or ask("Application name", DEFAULT_NAME)).strip()
+    validate_text("application name", name)
+    slug = (args.slug or slugify(name)).strip()
     validate_slug(slug)
 
-    author = args.author or ask("Author name", DEFAULT_AUTHOR)
-    email = args.author_email or ask("Author email", DEFAULT_EMAIL)
-    repo_url = (args.repo_url or ask("Repository URL", DEFAULT_URL)).rstrip("/")
+    author = (args.author or ask("Author name", DEFAULT_AUTHOR)).strip()
+    validate_text("author name", author)
+    email = (args.author_email or ask("Author email", DEFAULT_EMAIL)).strip()
+    validate_email(email)
+    repo_url = (
+        args.repo_url or ask("Repository URL", DEFAULT_URL)
+    ).strip().rstrip("/")
+    validate_url(repo_url)
 
     gtype = gtype_prefix(slug)
     app_id_path = "/" + app_id.replace(".", "/")
@@ -133,6 +256,11 @@ def main():
 
     replacements = [
         (DEFAULT_URL, repo_url),
+        (f"{DEFAULT_SLUG.upper()}_DEBUG", f"{slug.upper()}_DEBUG"),
+        (
+            f"{DEFAULT_SLUG.upper()}_APPIMAGE_BUILD",
+            f"{slug.upper()}_APPIMAGE_BUILD",
+        ),
         (DEFAULT_APP_ID, app_id),
         ("/com/example/Hello", app_id_path),
         ('<developer id="com.example">', f'<developer id="{developer_id}">'),
@@ -144,19 +272,7 @@ def main():
         (DEFAULT_EMAIL, email),
     ]
 
-    renames = {
-        Path("src/hello.in"): Path(f"src/{slug}.in"),
-        Path("src/hello.gresource.xml"): Path(f"src/{slug}.gresource.xml"),
-        Path("data/com.example.Hello.desktop.in"): Path(f"data/{app_id}.desktop.in"),
-        Path("data/com.example.Hello.metainfo.xml.in"): Path(f"data/{app_id}.metainfo.xml.in"),
-        Path("data/com.example.Hello.gschema.xml"): Path(f"data/{app_id}.gschema.xml"),
-        Path("data/com.example.Hello.service.in"): Path(f"data/{app_id}.service.in"),
-        Path("data/icons/hicolor/scalable/apps/com.example.Hello.svg"):
-            Path(f"data/icons/hicolor/scalable/apps/{app_id}.svg"),
-        Path("data/icons/hicolor/symbolic/apps/com.example.Hello-symbolic.svg"):
-            Path(f"data/icons/hicolor/symbolic/apps/{app_id}-symbolic.svg"),
-        Path("com.example.Hello.json"): Path(f"{app_id}.json"),
-    }
+    renames = build_renames(ROOT, app_id, slug)
 
     print(f"Initializing {name}")
     print(f"  application ID: {app_id}")
@@ -185,14 +301,21 @@ def main():
         replace_in_file(path, replacements)
 
     for old, new in renames.items():
+        if old == new:
+            continue
         source = ROOT / old
         if not source.exists():
             fail(f"expected source file is missing: {old}")
         source.rename(ROOT / new)
 
-    strip_template_readme()
+    strip_template_sections()
 
     print(f"Done: {name} is ready. Run: meson setup build --prefix=\"$PWD/build-install\"")
+    print(
+        "The initializer is no longer needed; delete scripts/init.py and "
+        "tests/test_init.py if you do not want to keep the template defaults "
+        "in this project."
+    )
     return 0
 
 

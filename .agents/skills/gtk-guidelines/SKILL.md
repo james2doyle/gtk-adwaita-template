@@ -6,10 +6,14 @@ description: Write and edit GNOME Blueprint UI files (.blp) for GTK 4 and libadw
 # GNOME Blueprint
 
 Blueprint is a declarative markup language that compiles to GtkBuilder XML
-(`blueprint-compiler`). Everything here is grounded in GTK 4 / libadwaita 1.10+.
-A canonical set of runnable examples lives in the Workbench demos repo
-(`src/<Demo Name>/main.blp`; directory names contain spaces). Mimic those
-patterns.
+(`blueprint-compiler`). Everything here is grounded in GTK 4 / libadwaita 1.8+
+(the Flatpak runtime provides 1.10). A canonical set of runnable examples lives
+in the Workbench demos repo (`src/<Demo Name>/main.blp`; directory names contain
+spaces). Mimic those patterns.
+
+Check the `since:` annotation before using an API newer than 1.8, and check
+`deprecated:` before copying a widget from an older example. The `1-latest`
+documentation can describe APIs the minimum runtime does not provide.
 
 ## Additional documentation
 
@@ -48,10 +52,11 @@ Adw.Window window {
 
 - Always start with `using Gtk 4.0;`; add `using Adw 1;` when using libadwaita
   (version is just `1`, never `1.x`). Other namespaces seen in practice:
-  `using GtkSource 5;`, `using WebKit 6.0;`, `using Shumate 1.0;`, `using Pango 1.0;`.
+  `using GtkSource 5;`, `using Shumate 1.0;`, `using Pango 1.0;`. Add
+  `using WebKit 6.0;` only when the app genuinely embeds web content.
 - The first top-level object is the root widget. Auxiliary top-level objects go
   below it, unindented: `menu ... {}`, `Adw.Dialog {}`, `Adw.PreferencesDialog {}`,
-  `Gtk.ShortcutsWindow {}`, `Popover {}`, `FileFilter {}`, `template $Name {}`,
+  `Adw.ShortcutsDialog {}`, `Popover {}`, `FileFilter {}`, `template $Name {}`,
   secondary `Adw.NavigationPage {}` / windows, shared objects (`ColorDialog {}`,
   `Shumate.Marker {}`).
 - Only the `Gtk` namespace prefix may be omitted: `StringList` == `Gtk.StringList`.
@@ -219,8 +224,8 @@ menu demo_menu {
 
 ## Dialog responses
 
-`Adw.AlertDialog` / `Adw.MessageDialog` buttons come from the `responses`
-extension block:
+`Adw.AlertDialog` buttons come from the `responses` extension block
+(`Adw.MessageDialog` is deprecated since libadwaita 1.6):
 
 ```blp
 Adw.AlertDialog {
@@ -407,7 +412,7 @@ Other recurring shapes:
 | Adw.OverlaySplitView | `sidebar:`/`content:`, `show-sidebar: bind toggle.active` |
 | Adw.TabView / TabBar / TabOverview | tie via `view: tab_view`; page is `Adw.TabPage { title, child: }` |
 | Adw.Dialog | put `Adw.ToolbarView` + `Adw.HeaderBar` inside; `presentation-mode: bind combo_row.selected as <Adw.DialogPresentationMode>;` |
-| Adw.AlertDialog / Adw.MessageDialog | `responses [...]` block with flags `destructive`/`suggested`/`disabled` |
+| Adw.AlertDialog | `responses [...]` block with flags `destructive`/`suggested`/`disabled`; replaces deprecated `Adw.MessageDialog` |
 | Adw.Avatar | `size`, `show-initials: true`, `text: _("Jay Doe")` |
 | Adw.SplitButton | `label`/`icon-name` + `menu-model:` or `popover:` |
 | Adw.ButtonContent | icon+label helper inside Button/MenuButton/ToggleButton |
@@ -424,9 +429,53 @@ Other recurring shapes:
 | Calendar | `show-day-names`, `show-week-numbers`, `show-heading`, `day` |
 | ShortcutLabel | `accelerator: "<Super><Alt>s"` |
 | Shumate.SimpleMap | `show-zoom-buttons: true`; markers as top-level `Shumate.Marker` |
-| WebKit.WebView | `zoom-level: 0.8`; class `"view"` |
+| WebKit.WebView | Only for apps that embed web content; `zoom-level: 0.8`; class `"view"` |
 | Adw.Bin | `css-name: "button"` to reuse widget CSS for custom widgets; `accessible-role: toggle_button` |
 | Adw.MultiLayoutView | layouts are `Adw.Layout { name: "x"; content: Widget { ... }; };`; shared children are `[slot-id]` blocks under the view; slots are `Adw.LayoutSlot { id: "slot-id"; }`; switch via breakpoint setter `view.layout-name: "x";` (since 1.8) |
+
+## Startup performance
+
+The first frame is part of the UI. Build the window, then do expensive work
+after it is presented:
+
+- Lazy-import window and content modules. Import the window class in
+  `do_activate`, not at application-module import time.
+- Defer syntax highlighting, spell-check setup, and large preview/parser
+  trees to `GLib.PRIORITY_LOW` idles. Guard callbacks with a destroyed-window
+  check.
+- Keep `__init__` limited to layout, signals, and cheap state.
+- Presenting an empty shell before loading content is usually better perceived
+  startup than building everything first, provided the content arrives promptly.
+- Ship bytecode for packaged installs. Read-only Flatpak and AppImage installs
+  otherwise recompile every module on every launch.
+- Measure before optimizing: `PYTHONPROFILEIMPORTTIME=1`, `GDK_DEBUG=frames`,
+  py-spy, and Sysprof.
+- Headless tests can assert lazy imports in a fresh subprocess; display tests
+  must drain `GLib.MainContext` before asserting deferred state.
+
+## Modern replacements
+
+Target current stable GTK 4 and libadwaita. Prefer these replacements over
+deprecated APIs and archived examples:
+
+| Deprecated | Current |
+| --- | --- |
+| `Adw.MessageDialog` (deprecated 1.6) | `Adw.AlertDialog` |
+| `Adw.AboutWindow` (deprecated 1.6) | `Adw.AboutDialog` |
+| `Adw.PreferencesWindow` (deprecated 1.6) | `Adw.PreferencesDialog` |
+| `Adw.Leaflet`, `Adw.Flap` (deprecated 1.4) | `Adw.OverlaySplitView` / `Adw.NavigationSplitView` with `Adw.Breakpoint` |
+| `Adw.Squeezer` (deprecated 1.4) | Follow the breakpoints migration guide |
+| `Gtk.ComboBoxText` (deprecated 4.10) | `Gtk.DropDown` with `Gtk.StringList` |
+| `Gtk.Dialog` (deprecated 4.10) | `Adw.Dialog`, `Adw.AlertDialog`, or a window-specific dialog |
+| `Gtk.MessageDialog` (deprecated 4.10) | `Adw.AlertDialog` or `Gtk.AlertDialog` |
+| `Gtk.FileChooserDialog` (deprecated 4.10) | `Gtk.FileDialog` |
+| `Gtk.InfoBar` (deprecated 4.10) | `Adw.Banner` |
+| `Gtk.Assistant` (deprecated 4.10) | `Adw.NavigationView` or `Gtk.Stack` |
+| `Gtk.ShortcutsWindow` | `Adw.ShortcutsDialog` in libadwaita apps |
+| `Gtk.AboutDialog` | `Adw.AboutDialog` in libadwaita apps |
+
+When a project still contains a legacy widget, check the linked migration guide
+and migrate the touched area instead of copying the old pattern forward.
 
 ## Gotchas
 
@@ -454,6 +503,9 @@ Other recurring shapes:
   `"dim-label"`, `"boxed-list"`, `"boxed-list-separate"`, `"pill"`, `"circular"`,
   `"suggested-action"`, `"destructive-action"`, `"opaque"`, accent/success/warning/error).
 - The `using Adw 1;` import has no minor version; `Gtk` is `4.0`.
+- `Adw.Application` loads `style.css`, `style-dark.css` and `style-hc.css` from
+  the GResource base path automatically. Add them to the gresource instead of
+  loading them by hand with `Gtk.CssProvider`.
 - StringList items are plain values; mark translatable ones: `strings [_("Up"), _("Down")]`.
 - Prefer `Adw.StatusPage` as a page root and `Adw.Clamp` around forms; the demos
   root almost everything in one of those two.

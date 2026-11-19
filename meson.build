@@ -9,6 +9,11 @@ project('hello',
 i18n = import('i18n')
 gnome = import('gnome')
 
+install_data(
+  meson.project_license_files(),
+  install_dir: get_option('datadir') / 'licenses' / 'com.example.Hello',
+)
+
 subdir('data')
 subdir('src')
 subdir('po')

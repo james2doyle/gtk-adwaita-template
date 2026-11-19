@@ -10,10 +10,12 @@
     <p>Hello is a minimal GTK 4 and libadwaita application scaffold. Replace this description with your project's.</p>
   </description>
 
-  <!-- Add screenshots before submitting to Flathub, for example:
+  <!-- Flathub requires a screenshot with a direct, public image URL pinned
+  to a tag or commit (not a branch or GitHub /blob/ page):
   <screenshots>
     <screenshot type="default">
-      <image>https://example.com/screenshot.png</image>
+      <image type="source" width="1000" height="700">https://raw.githubusercontent.com/you/my-app/v0.1.0/docs/screenshot.png</image>
+      <caption>Main application window with sample content</caption>
     </screenshot>
   </screenshots>
   -->

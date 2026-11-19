@@ -2,14 +2,25 @@ pkgdatadir = get_option('prefix') / get_option('datadir') / meson.project_name()
 moduledir = pkgdatadir / 'hello'
 gnome = import('gnome')
 
-blueprints = custom_target('blueprints',
-  input: files(
-    'shortcuts-dialog.blp',
-    'window.blp',
-  ),
-  output: '.',
-  command: [find_program('blueprint-compiler'), 'batch-compile', '@OUTPUT@', '@CURRENT_SOURCE_DIR@', '@INPUT@'],
-)
+blueprint_compiler = find_program('blueprint-compiler')
+blueprint_command = [
+  blueprint_compiler,
+  'compile',
+  '@INPUT@',
+  '--output',
+  '@OUTPUT@',
+]
+
+# One generated .ui per source so Ninja tracks every output explicitly.
+blueprints = []
+foreach name : ['shortcuts-dialog', 'window']
+  blueprints += custom_target(
+    name + '.ui',
+    input: name + '.blp',
+    output: name + '.ui',
+    command: blueprint_command,
+  )
+endforeach
 
 hello_resources = gnome.compile_resources('hello',
   'hello.gresource.xml',
@@ -20,9 +31,10 @@ hello_resources = gnome.compile_resources('hello',
 )
 
 python = import('python')
+python3 = python.find_installation('python3')
 
 conf = configuration_data()
-conf.set('PYTHON', python.find_installation('python3').full_path())
+conf.set('PYTHON', python3.full_path())
 conf.set('VERSION', meson.project_version())
 conf.set('localedir', get_option('prefix') / get_option('localedir'))
 conf.set('pkgdatadir', pkgdatadir)
@@ -44,7 +56,12 @@ hello_sources = [
 
 install_data(hello_sources, install_dir: moduledir)
 
-python3 = python.find_installation('python3')
+# Ship bytecode: read-only installs would otherwise recompile on every launch.
+meson.add_install_script(
+  python3,
+  files('../scripts/compile-bytecode.py'),
+  get_option('datadir') / meson.project_name(),
+)
 
 test_env = [
   'PYTHONPATH=' + meson.project_source_root(),
@@ -54,6 +71,9 @@ test_env = [
   'LC_ALL=C',
   'LANG=C',
   'TERM=dumb',
+  'NO_AT_BRIDGE=1',
+  'PYTHONDONTWRITEBYTECODE=1',
+  'GTK_IM_MODULE=gtk-im-context-simple',
   'HOME=' + (meson.current_build_dir() / 'test-home'),
   'XDG_CONFIG_HOME=' + (meson.current_build_dir() / 'test-config'),
   'XDG_STATE_HOME=' + (meson.current_build_dir() / 'test-state'),
@@ -61,8 +81,16 @@ test_env = [
   'XDG_CACHE_HOME=' + (meson.current_build_dir() / 'test-cache'),
   'XDG_DATA_HOME=' + (meson.current_build_dir() / 'test-data'),
   'GSETTINGS_SCHEMA_DIR=' + (meson.project_build_root() / 'data'),
+  'GSETTINGS_BACKEND=memory',
 ]
 
+test('Initializer helpers', python3, args: [files('../tests/test_init.py')],
+  env: test_env)
 test('Window smoke test', python3, args: [files('../tests/test_window.py')],
   depends: test_schemas,
+  env: test_env)
+test('Application lifecycle', python3, args: [files('../tests/test_lifecycle.py')],
+  depends: test_schemas,
+  env: test_env)
+test('Lazy startup imports', python3, args: [files('../tests/test_startup.py')],
   env: test_env)

@@ -1,0 +1,291 @@
+# Build release artifacts only after CI succeeds for a v*.*.* tag push. Keeping
+# this separate from ci.yml leaves the CI workflow read-only and prevents
+# releases from pull requests or main-branch pushes.
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: release-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Require a release tag
+    if: github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      release: ${{ steps.tag.outputs.release }}
+    steps:
+      - name: Check for a v*.*.* tag
+        id: tag
+        env:
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          if [[ "$HEAD_BRANCH" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping $HEAD_BRANCH: not a v*.*.* release tag"
+          fi
+
+  build:
+    needs: validate
+    if: >
+      needs.validate.outputs.release == 'true' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      options: --privileged
+      volumes:
+        # Keep Flatpak's system installation on a volume so runtime updates
+        # rename within one filesystem instead of hitting overlayfs EXDEV.
+        - flatpak-installation:/var/lib/flatpak
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Prepare release source
+        env:
+          TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          test -n "$VERSION"
+
+          # The Flatpak container can leave the checkout owned by a different
+          # user than the job, which makes git reject the repository.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git fetch --tags --force origin
+          if ! git tag --points-at HEAD | grep -Fxq "$TAG"; then
+            echo "::error::CI run for $TAG does not point at a tag"
+            exit 1
+          fi
+
+          mkdir -p dist
+          git archive --format=tar.gz --prefix="hello-$VERSION/" \
+            -o "dist/hello-$VERSION.tar.gz" HEAD
+
+          export VERSION
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          archive = Path(f"dist/hello-{version}.tar.gz")
+          digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+          manifest = json.loads(
+              Path("com.example.Hello.json").read_text()
+          )
+          module = manifest["modules"][0]
+          module["sources"] = [
+              {
+                  "type": "archive",
+                  "path": archive.name,
+                  "sha256": digest,
+              }
+          ]
+          module["config-opts"] = ["--libdir=lib", "--buildtype=release"]
+          Path("dist/com.example.Hello.release.json").write_text(
+              json.dumps(manifest, indent=4) + "\n"
+          )
+          PY
+
+      - name: Build release bundle
+        uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
+        env:
+          # The action uses GITHUB_SHA for the Flatpak subject. A workflow_run
+          # event points at the default branch, so override it with the tag
+          # commit being released.
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
+        with:
+          manifest-path: dist/com.example.Hello.release.json
+          bundle: hello.flatpak
+          branch: stable
+          mirror-screenshots-url: https://dl.flathub.org/media
+          upload-artifact: false
+
+      - name: Smoke-test release bundle
+        run: |
+          set -euo pipefail
+          bundle=$(find . -maxdepth 2 -name hello.flatpak -type f -print -quit)
+          if [ -z "$bundle" ]; then
+            echo "::error::Flatpak bundle was not produced"
+            exit 1
+          fi
+
+          # Install into a throwaway user installation and check that the
+          # bundle runs before it is published.
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          export FLATPAK_USER_DIR="$tmp"
+          flatpak install --user --noninteractive "$bundle"
+          flatpak info --user com.example.Hello
+          timeout 60 flatpak run com.example.Hello --help
+
+      - name: Collect release artifacts
+        env:
+          TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          bundle=$(find . -maxdepth 2 -name hello.flatpak -type f -print -quit)
+          if [ -z "$bundle" ]; then
+            echo "::error::Flatpak bundle was not produced"
+            exit 1
+          fi
+          mv "$bundle" "dist/hello-$VERSION.flatpak"
+          (
+            cd dist
+            sha256sum "hello-$VERSION.tar.gz" \
+              "hello-$VERSION.flatpak" > SHA256SUMS
+          )
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-artifacts
+          path: |
+            dist/hello-*.tar.gz
+            dist/hello-*.flatpak
+            dist/com.example.Hello.release.json
+            dist/SHA256SUMS
+          if-no-files-found: error
+
+  appimage:
+    needs: validate
+    if: >
+      needs.validate.outputs.release == 'true' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    container: ubuntu:26.04
+    steps:
+      - name: Install git
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            --no-install-recommends ca-certificates git
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Build AppImage
+        env:
+          TAG: ${{ github.event.workflow_run.head_branch }}
+          HELLO_APPIMAGE_BUILD: "1"
+        run: |
+          set -euo pipefail
+          export APPIMAGE_VERSION="${TAG#v}"
+          ./scripts/build-appimage.sh
+
+      - name: Smoke-test AppImage
+        env:
+          TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libwayland-client0 libx11-6 xauth xvfb
+          appimage="dist/hello-$VERSION-x86_64.AppImage"
+          test -x "$appimage"
+          runtime_info=$("$appimage" --appimage-version 2>&1)
+          echo "$runtime_info"
+          grep -q "type2-runtime" <<<"$runtime_info"
+          "$appimage" --appimage-extract >/dev/null
+          test -f squashfs-root/AppRun
+          test -f squashfs-root/usr/share/applications/com.example.Hello.desktop
+          test -f squashfs-root/usr/share/icons/hicolor/scalable/apps/com.example.Hello.svg
+          ./squashfs-root/AppRun --help >/tmp/appimage-help.txt 2>&1
+          grep -q "Hello" /tmp/appimage-help.txt
+
+          HOME=$(mktemp -d)
+          XDG_RUNTIME_DIR=$(mktemp -d)
+          export HOME XDG_RUNTIME_DIR
+          chmod 0700 "$XDG_RUNTIME_DIR"
+          set +e
+          DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent \
+            GDK_BACKEND=x11 GTK_IM_MODULE=gtk-im-context-simple \
+            NO_AT_BRIDGE=1 \
+            timeout 10s xvfb-run --auto-servernum \
+            ./squashfs-root/AppRun \
+            >/tmp/appimage-gui.log 2>&1
+          status=$?
+          set -e
+          # The app stays open until closed; timeout means startup succeeded.
+          test "$status" -eq 124
+          ! grep -q "Traceback" /tmp/appimage-gui.log
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: appimage-artifact
+          path: dist/hello-*-x86_64.AppImage
+          if-no-files-found: error
+
+  publish:
+    needs: [build, appimage]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-artifacts
+          path: dist
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: appimage-artifact
+          path: dist
+
+      - name: Refresh checksums
+        run: |
+          set -euo pipefail
+          (
+            cd dist
+            sha256sum hello-*.tar.gz hello-*.flatpak \
+              hello-*.AppImage > SHA256SUMS
+          )
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          mapfile -t assets < <(find dist -maxdepth 1 -type f -print | sort)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "::error::No release assets found"
+            exit 1
+          fi
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          else
+            gh release create "$TAG" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Hello $VERSION" \
+              --generate-notes \
+              --verify-tag
+          fi
