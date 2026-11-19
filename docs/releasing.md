@@ -8,7 +8,8 @@ The version comes from `pyproject.toml` (the AppImage script reads it) and
 ## Prepare
 
 1. Set the new version in `meson.build`, `pyproject.toml`, and the AppStream
-   release entry. Update the AppStream screenshot URL to the new tag.
+   release entry. Update the AppStream screenshot URL to the new tag. For
+   Flathub, verify the app ID/repository rule in [flathub.md](flathub.md).
 2. Run the checks:
 
    ```sh
@@ -75,6 +76,11 @@ PY
 
 The release workflow fills in the same values from the tag.
 
+For a Flathub submission, replace the local `"path"` source with the public
+URL-backed archive shown in
+[flathub.md](flathub.md#manifest-rules). The local manifest is for the GitHub
+release bundle.
+
 ```sh
 flatpak-builder --force-clean --repo=dist/repo --state-dir=.flatpak-builder \
   --default-branch=stable --subject="Hello $VERSION" \
@@ -128,9 +134,11 @@ flatpak info --user com.example.Hello
 flatpak run com.example.Hello
 ```
 
-`flatpak build-bundle` produces an unsigned local bundle. Flathub builds the
-app from a manifest, so use a URL-backed archive (for example the GitHub tag
-tarball) and let Flathub sign and build it.
+`flatpak build-bundle` produces an unsigned local bundle. The GitHub release is
+separate from Flathub: see [flathub.md](flathub.md) for the app ID rule, the
+pinned URL source, permissions, linting, and submission. For a signed,
+self-hosted repository that updates with `flatpak update`, see
+[flathub.md](flathub.md#optional-signed-self-hosted-repository).
 
 For a local install test without touching your normal Flatpak installation:
 
@@ -170,7 +178,9 @@ The workflow:
   re-runs safe.
 
 The release is published, not drafted. Add `--draft` to the `gh release create`
-command in the workflow if you prefer a manual approval step.
+command in the workflow if you prefer a manual approval step. This workflow
+publishes GitHub release artifacts only; Flathub submission and the optional
+signed repository are described in [flathub.md](flathub.md).
 
 ## Artifacts
 

@@ -21,6 +21,12 @@ DEFAULT_AUTHOR = "James Doyle"
 DEFAULT_EMAIL = "james2doyle@gmail.com"
 DEFAULT_URL = "https://example.com/hello"
 
+CODE_HOSTING_HOSTS = {
+    "io.github": "github.com",
+    "io.gitlab": "gitlab.com",
+    "page.codeberg": "codeberg.org",
+}
+
 SKIP_DIRS = {
     ".git",
     ".dex",
@@ -78,6 +84,59 @@ def validate_app_id(app_id):
         fail(
             "application ID must be a reverse-DNS D-Bus name with at least "
             "three components (for example com.example.MyApp)"
+        )
+    parts = app_id.split(".")
+    if ".".join(parts[:2]) in CODE_HOSTING_HOSTS and len(parts) != 4:
+        fail(
+            "code-hosting application IDs must have exactly four components, "
+            "for example io.github.you.MyApp"
+        )
+
+
+def validate_repository_identity(app_id, repo_url):
+    """Check that a code-hosting app ID names the repository it points at."""
+    parts = app_id.split(".")
+    host = CODE_HOSTING_HOSTS.get(".".join(parts[:2]))
+    if host is None:
+        return
+
+    parsed = urlparse(repo_url)
+    netloc = parsed.netloc.lower()
+    if netloc.startswith("www."):
+        netloc = netloc[4:]
+    if netloc != host:
+        fail(
+            f"{app_id} requires a {host} repository URL, "
+            f"not {repo_url}"
+        )
+
+    path = parsed.path.strip("/")
+    if path.endswith(".git"):
+        path = path[:-4]
+    path_parts = [part for part in path.split("/") if part]
+    if len(path_parts) != 2:
+        fail(
+            f"{app_id} requires a repository URL like "
+            f"https://{host}/<owner>/<repo>"
+        )
+
+    owner, repo = path_parts
+    expected_owner, expected_repo = parts[2], parts[3]
+    if owner.lower() != expected_owner.lower():
+        fail(
+            f"{app_id} expects owner {expected_owner!r}, but "
+            f"{repo_url} points at {owner!r}"
+        )
+    if repo.lower() != expected_repo.lower():
+        hint = ""
+        if "-" in repo:
+            hint = (
+                " (remove the hyphen from the repository name, or use a "
+                "domain-based app ID)"
+            )
+        fail(
+            f"{app_id} expects repository {expected_repo!r}, but "
+            f"{repo_url} points at {repo!r}{hint}"
         )
 
 
@@ -220,12 +279,21 @@ def main():
     parser = argparse.ArgumentParser(
         description="Rename the GTK Adwaita scaffold for a new application."
     )
-    parser.add_argument("--app-id", help="reverse-DNS app ID, e.g. com.example.MyApp")
+    parser.add_argument(
+        "--app-id",
+        help="reverse-DNS app ID, e.g. com.example.MyApp or io.github.you.MyApp",
+    )
     parser.add_argument("--name", help="human-readable application name")
     parser.add_argument("--slug", help="lowercase Python/gettext slug (default: derived from --name)")
     parser.add_argument("--author", help="author name")
     parser.add_argument("--author-email", help="author email")
-    parser.add_argument("--repo-url", help="project homepage or repository URL")
+    parser.add_argument(
+        "--repo-url",
+        help=(
+            "project homepage or repository URL; code-hosting app IDs require "
+            "the matching repository URL"
+        ),
+    )
     parser.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
     args = parser.parse_args()
 
@@ -249,6 +317,7 @@ def main():
         args.repo_url or ask("Repository URL", DEFAULT_URL)
     ).strip().rstrip("/")
     validate_url(repo_url)
+    validate_repository_identity(app_id, repo_url)
 
     gtype = gtype_prefix(slug)
     app_id_path = "/" + app_id.replace(".", "/")

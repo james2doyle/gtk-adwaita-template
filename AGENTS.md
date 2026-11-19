@@ -350,7 +350,8 @@ Gtk.StyleContext.add_provider_for_display(
        |scripts/build-appimage.sh, packaging/appimage/AppImageBuilder.yml
        |tests/test_init.py, tests/test_window.py, tests/test_lifecycle.py,
        |tests/test_startup.py
-[Docs]|README.md, AGENTS.md, docs/appimage.md, docs/releasing.md
+[Docs]|README.md, AGENTS.md, docs/README.md, docs/flathub.md,
+      |docs/appimage.md, docs/releasing.md
 [CI]|.github/workflows/ci.yml, .github/workflows/release.yml
 ```
 
@@ -401,6 +402,10 @@ Gtk.StyleContext.add_provider_for_display(
 - If a Flatpak source archive is flattened, Meson fails with
   `first statement must be a call to project()`. Create archive sources with a
   top-level directory (`git archive --prefix="hello-$VERSION/"`).
+- Flathub's `flatpak-builder-lint` maps `io.github.<owner>.<App>` to
+  `https://github.com/<owner>/<app>`. A repository named `my-app` fails
+  `appid-url-not-reachable`; name the repository to match the last app ID
+  component without hyphens, or use a domain-based ID.
 - `appimagetool` 1.9.1 needs the `file` package in the build container.
   `appimage-builder` 1.1.0 needs the apt version-comparison patch applied by
   `scripts/build-appimage.sh`; keep both when bumping the tool.
@@ -413,7 +418,8 @@ Gtk.StyleContext.add_provider_for_display(
 ## Template initialization
 
 Run `python3 scripts/init.py` from a copy of this repository to replace the
-app ID, name, slug, author and derived filenames. It also removes the
+app ID, name, slug, author and derived filenames. It validates code-hosting IDs
+against the repository URL before changing anything. It also removes the
 template-only sections from `README.md` and this file. The script and its tests
 are excluded from replacements, so the template defaults remain available for
 the next copy. Once a project is initialized, `scripts/init.py` and

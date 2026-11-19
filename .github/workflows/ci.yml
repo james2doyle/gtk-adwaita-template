@@ -93,6 +93,35 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Check app ID matches repository
+        env:
+          MANIFEST: com.example.Hello.json
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          with open(os.environ["MANIFEST"], encoding="utf-8") as handle:
+              manifest = json.load(handle)
+          app_id = manifest.get("id") or manifest.get("app-id", "")
+          parts = app_id.split(".")
+          if parts[:2] != ["io", "github"]:
+              raise SystemExit(0)
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          if len(parts) != 4:
+              sys.exit(f"{app_id}: io.github app IDs need four components")
+          expected = f"{parts[2]}/{parts[3]}".lower()
+          if expected != repo.lower():
+              sys.exit(
+                  f"{app_id}: last two components must match {repo}. "
+                  "Rename the repository to match the app ID or use a "
+                  "domain-based app ID."
+              )
+          print(f"{app_id} matches {repo}")
+          PY
+
       - name: Build Flatpak repository
         uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
         with:

@@ -28,7 +28,16 @@ assert template_init.gtype_prefix("my_app") == "MyApp"
 assert template_init.gtype_prefix("md_split") == "MdSplit"
 
 template_init.validate_app_id("com.example.MyApp")
-for bad_app_id in ("com.example", "invalid", "com.example."):
+template_init.validate_app_id("io.github.example.MyApp")
+template_init.validate_app_id("page.codeberg.example.MyApp")
+for bad_app_id in (
+    "com.example",
+    "invalid",
+    "com.example.",
+    "io.github.example",
+    "io.gitlab.example",
+    "page.codeberg.example",
+):
     with contextlib.redirect_stderr(io.StringIO()):
         try:
             template_init.validate_app_id(bad_app_id)
@@ -64,6 +73,27 @@ for bad_url in (
     "https://example.com/app?x=1&y=2",
 ):
     expect_failure(template_init.validate_url, bad_url)
+
+template_init.validate_repository_identity(
+    "io.github.example.MyApp", "https://github.com/example/MyApp"
+)
+template_init.validate_repository_identity(
+    "io.github.example.MyApp", "https://github.com/example/myapp/"
+)
+template_init.validate_repository_identity(
+    "com.example.MyApp", "https://example.com/hello"
+)
+for app_id, repo_url in (
+    ("io.github.example.MyApp", "https://github.com/other/MyApp"),
+    ("io.github.example.MyApp", "https://github.com/example/my-app"),
+    ("io.github.example.MyApp", "https://example.com/hello"),
+    ("io.github.example.MyApp", "https://github.com/example/MyApp/issues"),
+    ("io.gitlab.example.MyApp", "https://github.com/example/MyApp"),
+    ("page.codeberg.example.MyApp", "https://github.com/example/MyApp"),
+):
+    expect_failure(
+        template_init.validate_repository_identity, app_id, repo_url
+    )
 
 # Replacements must be simultaneous: the new app ID contains "Hello", but the
 # name/GType replacements must not modify the newly inserted identifier.

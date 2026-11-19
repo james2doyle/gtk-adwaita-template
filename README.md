@@ -7,6 +7,8 @@ Hello is a working starting point for a GNOME application: a Blueprint UI,
 AppStream metadata, a Flatpak manifest, a containerized AppImage build, a
 restart-on-save development runner, and a Meson test setup.
 
+See [docs/README.md](docs/README.md) for the documentation index.
+
 ## What you get
 
 - GTK 4 and libadwaita with PyGObject
@@ -20,6 +22,8 @@ restart-on-save development runner, and a Meson test setup.
 - GitHub Actions build/lint/test workflow with pinned actions, an installed
   launcher smoke test, and a conditional Flatpak lint job
 - Tag-gated release workflow for source, Flatpak and AppImage artifacts
+- Flathub checklist with app-ID/repository validation and an optional signed
+  Flatpak repository example
 - `dev.py` restart-on-save runner, a sanitized test runner, initializer tests,
   a window smoke test, an application lifecycle test, and a lazy-import guard
 
@@ -58,8 +62,13 @@ python3 scripts/init.py \
   --name "My App" \
   --author "Your Name" \
   --author-email you@example.com \
-  --repo-url https://github.com/you/my-app
+  --repo-url https://github.com/you/MyApp
 ```
+
+For an `io.github.<owner>.<repo>` app ID, the repository name must match the
+last app ID component (case-insensitively, without hyphens). The initializer
+fails when `--repo-url` points at a different repository; see
+[docs/flathub.md](docs/flathub.md#app-id-and-repository).
 
 Run `python3 scripts/init.py` without arguments to be prompted for the
 application ID, name, author, email and repository URL.
@@ -88,6 +97,11 @@ Rules:
 
 - The app ID must be a reverse-DNS D-Bus name with at least three components,
   such as `com.example.MyApp`.
+- Code-hosting IDs are stricter: `io.github.*`, `io.gitlab.*`, and
+  `page.codeberg.*` use exactly four components, and `--repo-url` must point at
+  the matching public repository. The repository name must match the last
+  component (case-insensitive) and must not contain hyphens. This is the same
+  rule Flathub's `flatpak-builder-lint` applies with `appid-url-not-reachable`.
 - The slug must be a lowercase Python identifier. It is derived from the name
   when `--slug` is omitted (`"My App"` becomes `my_app`).
 - The initializer skips itself and its tests, so they keep the template
@@ -172,6 +186,10 @@ flatpak run com.example.Hello
 The manifest targets the GNOME runtime `51`. Add `--talk-name` or other
 finish-args only when the application actually needs them.
 
+For a signed, self-hosted repository that users install once and update with
+`flatpak update`, see the publishing section in
+[docs/flathub.md](docs/flathub.md#optional-signed-self-hosted-repository).
+
 ## AppImage
 
 ```sh
@@ -202,25 +220,12 @@ Before publishing or submitting to Flathub:
 
 1. Initialize the identity, bump the version in `meson.build`, `pyproject.toml`
    and the AppStream release entry, and replace placeholder metadata.
-2. Add at least one public AppStream screenshot. Use a direct HTTP(S) image
-   URL pinned to a tag or commit, mark one screenshot as `type="default"`, and
-   give it a short caption. Do not use a branch URL or GitHub `/blob/` page.
-3. Replace the development manifest's `"type": "dir"` source with a public Git
-   commit or source archive with a digest. Do not release from an unpinned
-   working tree. For an archive, create it with a top-level directory
-   (`git archive --prefix="hello-$VERSION/"`) and use
-   `--buildtype=release` in the manifest. The release workflow does both
-   automatically.
-4. Build the repository and run `flatpak-builder-lint manifest
-   com.example.Hello.json` followed by `flatpak-builder-lint repo <repo>`.
-5. Verify the installed app contains `COPYING` under
-   `share/licenses/<app-id>/` and launches from the installed launcher.
-6. Build and smoke-test the release artifacts. For the Flatpak, install the
-   bundle into a temporary `FLATPAK_USER_DIR` and run
-   `flatpak run com.example.Hello --help`. For the AppImage, check
-   `--appimage-version`, extract it, and run `squashfs-root/AppRun --help`.
-   See [docs/releasing.md](docs/releasing.md) for the full flow.
-7. Confirm no `.env`, keys, tokens, credentials, or test logs are tracked, and
+2. Follow [docs/flathub.md](docs/flathub.md) for the app ID/repository rule,
+   screenshot, pinned source, permissions, linter commands, and submission
+   steps.
+3. Build and smoke-test the release artifacts with
+   [docs/releasing.md](docs/releasing.md).
+4. Confirm no `.env`, keys, tokens, credentials, or test logs are tracked, and
    rotate any credential that may have been logged before the sanitized test
    runner was added.
 
@@ -248,6 +253,9 @@ Before publishing or submitting to Flathub:
 - **AppImage**: `./scripts/build-appimage.sh` builds a modern type2-runtime
   artifact in a container. See [docs/appimage.md](docs/appimage.md) for runtime
   behavior and FUSE fallback.
+- **Signed Flatpak repository**: publish a self-hosted, signed Flatpak
+  repository and update it with `flatpak update`. See
+  [docs/flathub.md](docs/flathub.md#optional-signed-self-hosted-repository).
 - **Async file/network work**: follow the ownership, generation, cancellation,
   snapshot, and resource-limit guidance in `AGENTS.md` before adding I/O.
 
@@ -261,7 +269,9 @@ dev.py                    restart-on-save development runner
 com.example.Hello.json    Flatpak development manifest
 pyproject.toml            dev tooling metadata (not a Python package)
 data/                     desktop file, metainfo, GSettings schema, icons
+docs/README.md            documentation index
 docs/appimage.md          AppImage build and runtime notes
+docs/flathub.md           Flathub checklist and optional signed repository
 docs/releasing.md         release builds, Flatpak and AppImage
 packaging/appimage/AppImageBuilder.yml  appimage-builder recipe
 po/                       translation sources
