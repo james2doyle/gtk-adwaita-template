@@ -106,8 +106,16 @@ jobs:
 
       - name: Lint repository when screenshots are configured
         run: |
-          if grep -Eq '^[[:space:]]*<screenshots>' \
-            data/com.example.Hello.metainfo.xml.in; then
+          # Parse the XML so the commented-out <screenshots> example in the
+          # template does not count as a configured screenshot.
+          if python3 - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse("data/com.example.Hello.metainfo.xml.in").getroot()
+          sys.exit(0 if root.find("screenshots") is not None else 1)
+          PY
+          then
             flatpak-builder-lint repo repo
           else
             echo "Skipping repo lint: add a public AppStream screenshot first."
